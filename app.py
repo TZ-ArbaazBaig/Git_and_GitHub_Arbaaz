@@ -16,8 +16,10 @@ if not MONGO_URI:
 client = MongoClient(MONGO_URI)
 
 db = client["flask_mongodb_db"]
+
 collection = db["users"]
 
+todos_collection = db["todos"]
 
 @app.route("/api")
 def api():
@@ -31,6 +33,44 @@ def api():
         return jsonify({
             "error": str(error)
         }), 500
+
+
+
+@app.route("/submittodoitem", methods=["POST"])
+def submit_todo_item():
+    try:
+        if request.is_json:
+            data = request.get_json()
+
+            item_name = data.get("itemName")
+            item_description = data.get("itemDescription")
+
+        else:
+            item_name = request.form.get("itemName")
+            item_description = request.form.get("itemDescription")
+
+        if not item_name or not item_description:
+            return jsonify({
+                "error": "itemName and itemDescription are required"
+            }), 400
+
+        todo_item = {
+            "itemName": item_name,
+            "itemDescription": item_description
+        }
+
+        result = todos_collection.insert_one(todo_item)
+
+        return jsonify({
+            "message": "Todo item submitted successfully",
+            "id": str(result.inserted_id)
+        }), 201
+
+    except Exception as error:
+        return jsonify({
+            "error": str(error)
+        }), 500
+
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -67,10 +107,15 @@ def home():
     return render_template("index.html")
 
 
+
 @app.route("/success")
 def success():
     return render_template("success.html")
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5001, debug=True)
+    app.run(
+        host="127.0.0.1",
+        port=5001,
+        debug=True
+    )
